@@ -1,0 +1,9 @@
+{
+  "name": "jarvis-plugin-canvas",
+  "version": "0.1.0",
+  "type": "module",
+  "dependencies": {
+    "mermaid": "^11.4.0",
+    "perfect-freehand": "^1.2.0"
+  }
+}

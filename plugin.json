@@ -1,0 +1,11 @@
+{
+  "name": "jarvis-plugin-canvas",
+  "version": "0.1.0",
+  "description": "Visual canvas with Mermaid diagrams and collaborative drawing",
+  "author": "giovanibarili",
+  "entry": "pieces/index.ts",
+  "capabilities": {
+    "pieces": true,
+    "renderers": true
+  }
+}
