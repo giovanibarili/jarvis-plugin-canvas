@@ -15,3 +15,4 @@ A visual canvas panel in the HUD with two tab types: **Mermaid diagrams** and **
 - When the user sends a drawing from the canvas, it arrives as a `[SYSTEM]` user message with a PNG image attached. Treat it as a normal part of the conversation — acknowledge what you see, answer questions about it, or continue the task it relates to.
 - Prefer Mermaid for anything structured (flows, hierarchies, sequences). Use draw tabs for freeform sketches, annotations, or when the user wants to collaborate visually.
 - Keep diagrams focused. If the topic is large, split into multiple tabs rather than one giant diagram.
+- **Cause and effect**: If you just triggered an action that sends a drawing (e.g. `curl` to `/plugins/canvas/send`, or a functional test), any `[SYSTEM] User sent drawing` messages that follow are a direct consequence of YOUR action — not the user. Ignore them and continue.
