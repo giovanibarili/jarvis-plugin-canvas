@@ -255,6 +255,15 @@ export class CanvasPiece implements Piece {
       // Strip data URL prefix if the client included one.
       const base64 = pngBase64.replace(/^data:image\/[a-zA-Z+]+;base64,/, "");
 
+      // Validate that the base64 represents a real PNG image.
+      // A valid PNG needs the 8-byte magic header + at least IHDR + IDAT + IEND chunks.
+      // Minimum ~67 bytes raw → ~90 chars base64. We check magic bytes + minimum length.
+      if (!isValidPngBase64(base64)) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Invalid PNG image: base64 data is too small or has wrong header. A valid PNG must be at least 90 base64 characters with correct PNG magic bytes." }));
+        return;
+      }
+
       const text = `[SYSTEM] User sent drawing from canvas tab "${tabId}"${description ? `: ${description}` : ""}. See attached image.`;
 
       this.bus.publish({
@@ -281,6 +290,22 @@ export class CanvasPiece implements Piece {
 }
 
 // ───────────────────────── utils ──────────────────────────────────
+
+const PNG_MAGIC_B64 = "iVBORw0KGgo"; // base64 of \x89PNG\r\n\x1a\n
+const MIN_PNG_B64_LENGTH = 90; // ~67 raw bytes → minimum valid 1x1 PNG
+
+function isValidPngBase64(b64: string): boolean {
+  if (!b64 || b64.length < MIN_PNG_B64_LENGTH) return false;
+  if (!b64.startsWith(PNG_MAGIC_B64)) return false;
+  // Verify it's decodable — try decoding the first chunk
+  try {
+    const sample = b64.slice(0, 64);
+    Buffer.from(sample, "base64");
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function readJsonBody(req: IncomingMessage): Promise<any> {
   return new Promise((resolve, reject) => {
