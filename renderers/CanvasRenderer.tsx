@@ -12,6 +12,7 @@ interface CanvasTab {
   type: 'mermaid' | 'draw'
   title: string
   content: string
+  replyTo: string
 }
 
 interface CanvasData {
@@ -244,9 +245,10 @@ function MermaidView({ syntax, tabId }: { syntax: string; tabId: string }) {
 
 // ─── DrawView ───
 
-function DrawView({ tab, drawStates }: {
+function DrawView({ tab, drawStates, replyTo }: {
   tab: CanvasTab
   drawStates: { current: Map<string, DrawState> }
+  replyTo: string
 }) {
   const svgRef = useRef<SVGSVGElement>(null)
 
@@ -492,7 +494,7 @@ function DrawView({ tab, drawStates }: {
                 fetch('/plugins/canvas/send', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ tabId: tab.id, pngBase64 }),
+                  body: JSON.stringify({ tabId: tab.id, pngBase64, replyTo }),
                 }).then(() => {
                   setSentMsg(true)
                   setTimeout(() => setSentMsg(false), 2000)
@@ -501,7 +503,7 @@ function DrawView({ tab, drawStates }: {
               img.onerror = (err) => console.error('SVG to image error:', err)
               img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgString)))
             } catch (err) { console.error('Send error:', err) }
-          }}>📤 Send to JARVIS</button>
+          }}>{replyTo && replyTo !== 'main' ? `📤 Send to ${replyTo}` : '📤 Send to JARVIS'}</button>
       </div>
 
       {/* SVG Canvas */}
@@ -661,7 +663,7 @@ export function CanvasRenderer({ state }: { state: any }) {
         {activeTab.type === 'mermaid' ? (
           <MermaidView syntax={activeTab.content} tabId={activeTab.id} />
         ) : (
-          <DrawView tab={activeTab} drawStates={drawStatesRef} />
+          <DrawView tab={activeTab} drawStates={drawStatesRef} replyTo={activeTab.replyTo || 'main'} />
         )}
       </div>
     </div>

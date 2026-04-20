@@ -18,6 +18,7 @@ interface CanvasTab {
   type: TabType;
   title: string;
   content: string;
+  replyTo: string;
 }
 
 interface CanvasData {
@@ -134,7 +135,8 @@ export class CanvasPiece implements Piece {
         }
         const id = this.nextTabId();
         const title = (input.title as string | undefined)?.trim() || `Diagram ${this.tabIdCounter}`;
-        this.tabs.push({ id, type: "mermaid", title, content: syntax });
+        const replyTo = typeof input.__sessionId === "string" ? input.__sessionId : "main";
+        this.tabs.push({ id, type: "mermaid", title, content: syntax, replyTo });
         this.publishToHud();
         return { success: true, tabId: id, title, type: "mermaid" };
       },
@@ -161,7 +163,8 @@ export class CanvasPiece implements Piece {
         const id = this.nextTabId();
         const title = (input.title as string | undefined)?.trim() || `Sketch ${this.tabIdCounter}`;
         const svg = typeof input.svg === "string" ? input.svg : "";
-        this.tabs.push({ id, type: "draw", title, content: svg });
+        const replyTo = typeof input.__sessionId === "string" ? input.__sessionId : "main";
+        this.tabs.push({ id, type: "draw", title, content: svg, replyTo });
         this.publishToHud();
         return { success: true, tabId: id, title, type: "draw" };
       },
@@ -245,6 +248,7 @@ export class CanvasPiece implements Piece {
       const tabId = typeof body?.tabId === "string" ? body.tabId : "";
       const pngBase64 = typeof body?.pngBase64 === "string" ? body.pngBase64 : "";
       const description = typeof body?.description === "string" ? body.description.trim() : "";
+      const replyTo = typeof body?.replyTo === "string" && body.replyTo ? body.replyTo : "main";
 
       if (!tabId || !pngBase64) {
         res.writeHead(400, { "Content-Type": "application/json" });
@@ -269,7 +273,7 @@ export class CanvasPiece implements Piece {
       this.bus.publish({
         channel: "ai.request",
         source: this.id,
-        target: "main",
+        target: replyTo,
         text,
         images: [
           {
