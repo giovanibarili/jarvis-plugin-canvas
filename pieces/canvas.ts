@@ -80,13 +80,13 @@ export class CanvasPiece implements Piece {
       historyCount: this.historyCount,
     };
 
-    const action = this.addedToHud ? "update" : "add";
-    this.addedToHud = true;
-
+    // Always use "add" — this ensures the panel re-appears even if the user
+    // previously closed it. HudState treats "add" on an existing pieceId as
+    // an upsert, so there's no duplication.
     this.bus.publish({
       channel: "hud.update",
       source: this.id,
-      action,
+      action: "add",
       pieceId: this.id,
       piece: {
         pieceId: this.id,
