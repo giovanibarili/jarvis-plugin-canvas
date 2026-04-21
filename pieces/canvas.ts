@@ -47,9 +47,21 @@ export class CanvasPiece implements Piece {
     this.bus = bus;
     this.registerCapabilities();
     this.registerRoutes();
+
+    // When the panel is closed (removed from HUD), clear all tabs so
+    // the next canvas_* call starts fresh instead of re-showing old tabs.
+    this.unsubRemove = this.bus.subscribe("hud.update", (msg: any) => {
+      if (msg.action === "remove" && msg.pieceId === this.id && msg.source !== this.id) {
+        this.tabs = [];
+        this.addedToHud = false;
+      }
+    });
   }
 
+  private unsubRemove?: () => void;
+
   async stop(): Promise<void> {
+    this.unsubRemove?.();
     if (this.addedToHud) {
       this.bus.publish({
         channel: "hud.update",
