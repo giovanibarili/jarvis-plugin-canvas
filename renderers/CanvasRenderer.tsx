@@ -211,6 +211,11 @@ const S = {
 function MermaidView({ syntax, tabId }: { syntax: string; tabId: string }) {
   const [svgHtml, setSvgHtml] = useState('')
   const [error, setError] = useState('')
+  const [scale, setScale] = useState(1)
+  const [translate, setTranslate] = useState({ x: 0, y: 0 })
+  const isPanning = useRef(false)
+  const panStart = useRef({ x: 0, y: 0, tx: 0, ty: 0 })
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     ensureMermaid()
@@ -221,6 +226,9 @@ function MermaidView({ syntax, tabId }: { syntax: string; tabId: string }) {
         if (!cancelled) {
           setSvgHtml(svg)
           setError('')
+          // Reset view on new diagram
+          setScale(1)
+          setTranslate({ x: 0, y: 0 })
         }
       } catch (err: any) {
         if (!cancelled) {
@@ -233,12 +241,88 @@ function MermaidView({ syntax, tabId }: { syntax: string; tabId: string }) {
     return () => { cancelled = true }
   }, [syntax, tabId])
 
+  // Zoom with scroll wheel (around cursor position)
+  const onWheel = useCallback((e: any) => {
+    e.preventDefault()
+    const container = containerRef.current
+    if (!container) return
+    const rect = container.getBoundingClientRect()
+    const cursorX = e.clientX - rect.left
+    const cursorY = e.clientY - rect.top
+    const factor = e.deltaY > 0 ? 0.9 : 1.1
+    const newScale = Math.max(0.1, Math.min(10, scale * factor))
+    // Adjust translate so zoom is centered on cursor
+    const dx = cursorX - translate.x
+    const dy = cursorY - translate.y
+    setTranslate({
+      x: cursorX - dx * (newScale / scale),
+      y: cursorY - dy * (newScale / scale),
+    })
+    setScale(newScale)
+  }, [scale, translate])
+
+  // Pan with mouse drag
+  const onPointerDown = useCallback((e: any) => {
+    isPanning.current = true
+    panStart.current = { x: e.clientX, y: e.clientY, tx: translate.x, ty: translate.y }
+    containerRef.current?.setPointerCapture(e.pointerId)
+  }, [translate])
+
+  const onPointerMove = useCallback((e: any) => {
+    if (!isPanning.current) return
+    setTranslate({
+      x: panStart.current.tx + (e.clientX - panStart.current.x),
+      y: panStart.current.ty + (e.clientY - panStart.current.y),
+    })
+  }, [])
+
+  const onPointerUp = useCallback(() => {
+    isPanning.current = false
+  }, [])
+
+  // Fit to container
+  const fitToView = useCallback(() => {
+    setScale(1)
+    setTranslate({ x: 0, y: 0 })
+  }, [])
+
   if (error) {
     return <div style={S.errorBox}>Mermaid error: {error}</div>
   }
   return (
-    <div style={S.mermaidWrap}>
-      <div dangerouslySetInnerHTML={{ __html: svgHtml }} />
+    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' as const }}>
+      {/* Zoom toolbar */}
+      <div style={S.toolbar}>
+        <button style={S.toolBtn(false)} onClick={() => {
+          const newScale = Math.min(10, scale * 1.25)
+          setScale(newScale)
+        }}>🔍+</button>
+        <button style={S.toolBtn(false)} onClick={() => {
+          const newScale = Math.max(0.1, scale * 0.8)
+          setScale(newScale)
+        }}>🔍−</button>
+        <button style={S.toolBtn(false)} onClick={fitToView}>⊡ Fit</button>
+        <span style={{ color: '#4a5a6a', fontSize: '11px' }}>{Math.round(scale * 100)}%</span>
+      </div>
+      {/* Diagram area */}
+      <div
+        ref={containerRef}
+        style={{
+          ...S.mermaidWrap,
+          cursor: isPanning.current ? 'grabbing' : 'grab',
+          overflow: 'hidden',
+          userSelect: 'none' as const,
+        }}
+        onWheel={onWheel}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+      >
+        <div style={{
+          transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
+          transformOrigin: '0 0',
+        }} dangerouslySetInnerHTML={{ __html: svgHtml }} />
+      </div>
     </div>
   )
 }
